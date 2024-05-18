@@ -5,18 +5,20 @@ import org.drones.delivery.model.drone.Drone;
 import org.drones.delivery.model.drone.DroneDelivery;
 import org.drones.delivery.model.drone.Location;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DroneFileReader {
+    private static final String DRONE_OBJECT_PREFIX = "Drone";
+
     private final Pattern dataPattern;
 
     public DroneFileReader() {
@@ -24,44 +26,47 @@ public class DroneFileReader {
     }
 
     public DroneDelivery read(String pathStr) {
-        try (var inputStream = new FileInputStream(readFile(pathStr));
-             var reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            return getDroneDeliveryFromReader(reader);
+        try (var linesStream = Files.lines(getPathFromString(pathStr))) {
+            return getDroneDeliveryFromLineStream(linesStream);
         } catch (Exception e) {
             throw new DroneFileReaderException("Error while reading file %s: %s".formatted(pathStr, e.getMessage()), e);
         }
     }
 
-    private File readFile(String pathStr) {
-        var file = new File(pathStr);
-        if (!file.exists()) {
+    private Path getPathFromString(String pathStr) {
+        var filePath = Paths.get(pathStr);
+        if (!Files.exists(filePath)) {
             throw new DroneFileReaderException("Drone file %s could not be found".formatted(pathStr));
         }
 
-        return file;
+        return filePath;
     }
 
-    private DroneDelivery getDroneDeliveryFromReader(BufferedReader reader) throws IOException {
-        final var droneDelivery = new DroneDelivery();
-        boolean isFirstLine = true;
-        var line = reader.readLine();
-        while (Objects.nonNull(line)) {
-            if (isFirstLine) {
-                droneDelivery.setDrones(getDroneStrListFromLine(line));
-                isFirstLine = false;
-            } else {
-                droneDelivery.getLocations().add(getLocationFromLine(line));
-            }
-            line = reader.readLine();
-        }
+    @SuppressWarnings("unchecked")
+    private DroneDelivery getDroneDeliveryFromLineStream(Stream<String> lines) throws IOException {
+        Map<Boolean, List<Object>> dronesObjectsMap = lines.map(l -> isDroneLine(l)
+                        ? getDroneStrListFromLine(l)
+                        : getLocationFromLine(l))
+                .collect(Collectors.partitioningBy(o -> o instanceof Location));
 
-        sortLocationsByWeightDesc(droneDelivery.getLocations());
+        List<Drone> droneList = dronesObjectsMap.get(Boolean.FALSE).stream()
+                .findFirst()
+                .map(o -> (List<Drone>) o)
+                .orElseThrow(() -> new DroneFileReaderException("Drone section not found in file"));
 
-        return droneDelivery;
+        List<Location> locationList = dronesObjectsMap.get(Boolean.TRUE).stream()
+                .map(o -> (Location) o)
+                .sorted()
+                .toList();
+
+        return DroneDelivery.builder()
+                .drones(droneList)
+                .locations(locationList)
+                .build();
     }
 
-    private void sortLocationsByWeightDesc(List<Location> locations) {
-        Collections.sort(locations);
+    private boolean isDroneLine(String line) {
+        return line.contains(DRONE_OBJECT_PREFIX);
     }
 
     private List<Drone> getDroneStrListFromLine(String line) {

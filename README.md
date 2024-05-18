@@ -24,7 +24,7 @@ run the loop for finding optimal locations again.
 
 ## Dependencies
 - [JCommander](https://jcommander.org/)
-- [Project Lombok](https://projectlombok.org/)\
+- [Project Lombok](https://projectlombok.org/)
 - [Maven](https://maven.apache.org/)
 
 ## How to execute the program

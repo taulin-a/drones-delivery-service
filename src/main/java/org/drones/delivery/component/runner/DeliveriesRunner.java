@@ -134,7 +134,6 @@ public class DeliveriesRunner {
             }
 
             var location = availableLocations.get(locationIndex);
-
             if ((drone.getCurrentWeight() - location.getPackageWeight()) < 0) {
                 break;
             }
