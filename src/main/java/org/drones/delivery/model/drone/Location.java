@@ -25,7 +25,7 @@ public class Location implements Comparable<Location> {
         return packageWeight - otherLocation.getPackageWeight();
     }
 
-    public synchronized void visitByDrone(Drone drone) {
+    public void visitByDrone(Drone drone) {
         if (delivered) return;
 
         drone.getCurrentTrip().getLocationsDelivered().add(this);

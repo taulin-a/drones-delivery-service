@@ -29,7 +29,7 @@ public class Drone {
         currentWeight = maximumWeight;
     }
 
-    public synchronized void startTrip() {
+    public void startTrip() {
         trips.add(new Trip(++currentTrip));
     }
 
